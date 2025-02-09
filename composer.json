@@ -1,0 +1,15 @@
+{
+    "name": "mintis/webfont-checker",
+    "description": "Een WP-CLI extensie voor het scannen en optimaliseren van webfonts.",
+    "type": "wp-cli-package",
+    "license": "MIT",
+    "require": {
+        "wp-cli/wp-cli": "^2.0"
+    },
+    "autoload": {
+        "files": [
+        "webfont-command.php"
+        ]
+    }
+}
+  
