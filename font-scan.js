@@ -1,12 +1,11 @@
 import puppeteer from 'puppeteer';
-import 'dotenv/config'; // Automatisch `.env` inlezen
-
+import 'dotenv/config';
 import { URL } from 'url';
 
-// 🚀 **Bepaal de start-URL automatisch**
+// 🚀 **Determine the start URL automatically**
 const START_URL = process.env.WP_HOME || 'http://localhost';
 
-// 🕷️ **Crawlfunctie om alle interne links te verzamelen**
+// 🕷️ **Crawl function to collect all internal links**
 async function getAllLinks(browser, baseUrl) {
   const page = await browser.newPage();
   await page.goto(baseUrl, { waitUntil: 'networkidle2' });
@@ -14,14 +13,14 @@ async function getAllLinks(browser, baseUrl) {
   const links = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('a'))
       .map(a => a.href)
-      .filter(href => href.startsWith(window.location.origin)); // Alleen interne links
+      .filter(href => href.startsWith(window.location.origin)); // Only internal links
   });
 
   await page.close();
-  return [...new Set(links)]; // Verwijder dubbele links
+  return [...new Set(links)]; // Remove duplicate links
 }
 
-// 🖋 **Font-scanfunctie: Haal ALLE gebruikte fonts en weights op**
+// 🖋 **Font scan function: Retrieve ALL used fonts and weights**
 async function scanFontsOnPage(page) {
   return await page.evaluate(() => {
     const fontMap = new Map();
@@ -45,14 +44,14 @@ async function scanFontsOnPage(page) {
   });
 }
 
-// 🔍 **Check welke fonts en font-weights worden ingeladen via @font-face en preload links**
+// 🔍 **Check which fonts and font-weights are loaded via @font-face and preload links**
 async function scanLoadedFonts(page) {
   const loadedFonts = new Map();
 
-  // **Intercepteer ALLE CSS-bestanden**
+  // **Intercept ALL CSS files**
   const stylesheets = await page.evaluate(() =>
     Array.from(document.styleSheets)
-      .filter(sheet => sheet.href) // Alleen externe stylesheets
+      .filter(sheet => sheet.href) // Only external stylesheets
       .map(sheet => sheet.href)
   );
 
@@ -61,7 +60,7 @@ async function scanLoadedFonts(page) {
       const response = await page.goto(sheetUrl);
       const cssContent = await response.text();
 
-      // **Zoek naar @font-face declaraties in de CSS**
+      // **Search for @font-face declarations in CSS**
       const fontFaceMatches = cssContent.matchAll(/@font-face\s*{[^}]*font-family:\s*["']?([^;"'}]+)["']?;[^}]*font-weight:\s*(\d{3})/g);
       for (const match of fontFaceMatches) {
         const fontFamily = match[1].trim();
@@ -73,19 +72,19 @@ async function scanLoadedFonts(page) {
         loadedFonts.get(fontFamily).add(fontWeight);
       }
     } catch (error) {
-      console.warn(`⚠️  Kon stylesheet niet laden: ${sheetUrl}`);
+      console.warn(`⚠️  Could not load stylesheet: ${sheetUrl}`);
     }
   }
 
-  // **Detecteer preload fonts**
+  // **Detect preload fonts**
   const preloadFonts = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('link[rel="preload"][as="font"]'))
       .map(link => {
         const match = link.href.match(/.*\/([^\/]+)-latin-(\d+)(italic)?\.woff2/);
         if (match) {
           return {
-            font: match[1].replace(/-/g, ' '), // Font naam
-            weight: match[2] + (match[3] ? ' italic' : ''), // Weight + italic indien aanwezig
+            font: match[1].replace(/-/g, ' '), // Font name
+            weight: match[2] + (match[3] ? ' italic' : ''), // Weight + italic if present
           };
         }
         return null;
@@ -109,26 +108,26 @@ async function scanLoadedFonts(page) {
   const visitedUrls = new Set();
   let loadedFonts = new Map();
 
-  console.log(`🔍 Start met crawlen vanaf: ${START_URL}`);
+  console.log(`🔍 Starting crawl from: ${START_URL}`);
 
-  // Verzamel ALLE links op de site
+  // Collect ALL links on the site
   const allLinks = await getAllLinks(browser, START_URL);
-  console.log(`📌 Gevonden interne pagina’s: ${allLinks.length}`);
+  console.log(`📌 Found internal pages: ${allLinks.length}`);
 
   for (const pageUrl of allLinks) {
     if (visitedUrls.has(pageUrl)) continue;
     visitedUrls.add(pageUrl);
 
-    console.log(`🔍 Analyseren van: ${pageUrl}`);
+    console.log(`🔍 Analyzing: ${pageUrl}`);
     const page = await browser.newPage();
     await page.goto(pageUrl, { waitUntil: 'networkidle2' });
 
-    // Haal gebruikte fonts op
+    // Retrieve used fonts
     const pageFonts = await scanFontsOnPage(page);
-    // Haal ingeladen fonts en weights op (uit stylesheets en preload links)
+    // Retrieve loaded fonts and weights (from stylesheets and preload links)
     const pageLoadedFonts = await scanLoadedFonts(page);
     
-    // Voeg ingeladen fonts toe aan de map
+    // Add loaded fonts to the map
     pageLoadedFonts.forEach((weights, font) => {
       if (!loadedFonts.has(font)) {
         loadedFonts.set(font, new Set());
@@ -136,7 +135,7 @@ async function scanLoadedFonts(page) {
       weights.forEach(weight => loadedFonts.get(font).add(weight));
     });
 
-    // Voeg de resultaten van deze pagina toe aan de totale lijst
+    // Add the results of this page to the total list
     pageFonts.forEach(({ font, weights }) => {
       if (!fontUsage.has(font)) {
         fontUsage.set(font, new Set());
@@ -149,18 +148,18 @@ async function scanLoadedFonts(page) {
 
   await browser.close();
 
-  // 🎨 **Print de resultaten**
-  console.log('🚀 **Gebruikte font-weights & stijlen op de gehele site:**');
+  // 🎨 **Print results**
+  console.log('🚀 **Used font-weights & styles across the entire site:**');
   fontUsage.forEach((weights, font) => {
     console.log(`🎨 ${font}: ${[...weights].join(', ')}`);
   });
 
-  console.log('\n🖋 **Ingeladen fonts en font-weights via @font-face en preload links:**');
+  console.log('\n🖋 **Loaded fonts and font-weights via @font-face and preload links:**');
   loadedFonts.forEach((weights, font) => {
     console.log(`🎨 ${font}: ${[...weights].join(', ')}`);
   });
 
-  // 🔍 **Check ongebruikte fonts en weights**
+  // 🔍 **Check unused fonts and weights**
   const unusedFonts = [];
   loadedFonts.forEach((weights, font) => {
     const usedWeights = fontUsage.get(font) || new Set();
@@ -171,11 +170,11 @@ async function scanLoadedFonts(page) {
   });
 
   if (unusedFonts.length > 0) {
-    console.log('\n❌ **Ongebruikte ingeladen fonts en weights! Overweeg deze te verwijderen:**');
+    console.log('\n❌ **Unused loaded fonts and weights! Consider removing these:**');
     console.log(unusedFonts.join('\n'));
   } else {
-    console.log('\n✅ **Alle ingeladen fonts en weights worden gebruikt!**');
+    console.log('\n✅ **All loaded fonts and weights are in use!**');
   }
 
-  console.log('\n✅ Scan voltooid! Controleer of je overbodige @font-face fonts laadt.');
+  console.log('\n✅ Scan complete! Check if you are loading unnecessary @font-face fonts.');
 })();
