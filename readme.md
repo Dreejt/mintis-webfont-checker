@@ -83,6 +83,3 @@ Feel free to contribute to Webfont Checker by submitting pull requests or report
 
 ## License
 This project is licensed under the MIT License.
-
-## Contact
-For support or inquiries, visit [Mintis](https://www.mintis.nl).

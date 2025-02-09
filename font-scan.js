@@ -1,5 +1,7 @@
 import puppeteer from 'puppeteer';
 import 'dotenv/config';
+import { createInterface } from 'readline/promises';
+import { execSync } from 'child_process';
 import { URL } from 'url';
 
 // 🚀 **Determine the start URL automatically**
@@ -159,22 +161,27 @@ async function scanLoadedFonts(page) {
     console.log(`🎨 ${font}: ${[...weights].join(', ')}`);
   });
 
-  // 🔍 **Check unused fonts and weights**
-  const unusedFonts = [];
-  loadedFonts.forEach((weights, font) => {
-    const usedWeights = fontUsage.get(font) || new Set();
-    const unusedWeights = [...weights].filter(weight => !usedWeights.has(weight));
-    if (unusedWeights.length > 0) {
-      unusedFonts.push(`${font} (${unusedWeights.join(', ')})`);
+  // 🆕 **Check missing fonts & suggest installing them**
+  const missingFonts = [];
+  fontUsage.forEach((weights, font) => {
+    if (!loadedFonts.has(font)) {
+      missingFonts.push(font);
     }
   });
 
-  if (unusedFonts.length > 0) {
-    console.log('\n❌ **Unused loaded fonts and weights! Consider removing these:**');
-    console.log(unusedFonts.join('\n'));
+  if (missingFonts.length > 0) {
+    console.log('\n❌ **Missing fonts detected!**');
+    console.log(missingFonts.join('\n'));
+
+    console.log('\n💡 **Suggestion:** Install the missing fonts using Laravel Webfonts package.');
+    console.log('1️⃣ Install the package if not installed:');
+    console.log('   composer require log1x/laravel-webfonts');
+    console.log('2️⃣ Add the missing fonts using artisan / wp acorn command:');
+    console.log(`   wp acorn webfonts:add`);
   } else {
-    console.log('\n✅ **All loaded fonts and weights are in use!**');
+    console.log('\n✅ **All used fonts are correctly loaded!**');
   }
+  
 
   console.log('\n✅ Scan complete! Check if you are loading unnecessary @font-face fonts.');
 })();
